@@ -1,0 +1,200 @@
+plugins:
+  cloudify-mano-plugin:
+    executor: central_deployment_agent
+    package_name: 'cloudify-mano-plugin'
+    package_version: '0.1.0'
+
+data_types:
+
+  cloudify.datatypes.mano.ConnectionConfig:
+    properties:
+      username:
+        description: >
+          Username needed for authentication.
+        type: string
+        required: false
+      password:
+        description: >
+          Password needed for authentication.
+        type: string
+        required: false
+      token:
+        description: >
+          Authentication token.
+        type: string
+        required: false
+      endpoint_url:
+        description: >
+            The complete URL to use for the constructed client.
+        type: string
+        required: true
+
+dsl_definitions:
+
+  client_config: &client_config
+    client_config:
+      description: >
+        A dictionary of values to pass to authenticate with.
+      type: cloudify.datatypes.mano.ConnectionConfig
+      required: false
+
+  tags: &tags
+    type: dict
+    description: Tags used in SOL package or instance creation
+    default: { }
+
+node_types:
+
+  cloudify.mano.etsi.sol.Package:
+    derived_from: cloudify.nodes.Root
+    properties:
+      <<: *client_config
+      tags: *tags
+      file:
+        type: string
+        description: >
+          Location of file to upload as a package content.
+          Relative to blueprint root path.
+        required: true
+
+  cloudify.mano.etsi.sol.VFNPackage:
+    derived_from: cloudify.mano.etsi.sol.Package
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.create_vfn
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+            tags:
+              default: { get_property: [ SELF, tags ] }
+        configure:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.upload_vfn
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+            file:
+              default: { get_property: [ SELF, file ] }
+        start:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.update_vfn_state
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+            operational_state:
+              default: "ENABLED"
+        stop:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.update_vfn_state
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+            operational_state:
+              default: "DISABLED"
+        delete:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.delete_vfn
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+
+  cloudify.mano.etsi.sol.NSDPackage:
+    derived_from: cloudify.mano.etsi.sol.Package
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.create_nsd
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+            tags:
+              default: { get_property: [ SELF, tags ] }
+        configure:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.upload_nsd
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+            file:
+              default: { get_property: [ SELF, file ] }
+        start:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.update_nsd_state
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+            operational_state:
+              default: "ENABLED"
+        stop:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.update_nsd_state
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+            operational_state:
+              default: "DISABLED"
+        delete:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.delete_nsd
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+
+  cloudify.mano.etsi.sol.NSInstance:
+    derived_from: cloudify.nodes.Root
+    properties:
+      <<: *client_config
+      tags: *tags
+      nsDescription:
+        type: string
+        description: NS Instance description
+        required: false
+      nsName:
+        type: string
+        description: Network Service instance name
+        required: true
+      nsdId:
+        type: string
+        required: true
+      additionalParamsForNs:
+        type: dict
+        description: The request accepts the following data in JSON format
+        required: false
+    interfaces:
+      cloudify.interfaces.lifecycle:
+        create:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.create_ns_instance
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+            tags:
+              default: { get_property: [ SELF, tags ] }
+            nsd_id:
+              default: { get_property: [ SELF, nsdId ] }
+            nsd_name:
+              default: { get_property: [ SELF, nsName ] }
+            ns_description:
+              default: { get_property: [ SELF, nsDescription ] }
+        configure:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.instantiate_ns_instance
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+            additional_params:
+              default: { get_property: [ SELF, additionalParamsForNs ] }
+            dry_run:
+              default: False
+        start:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.get_network_operation
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+        prestop:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.terminate_ns_instance
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+        stop:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.get_network_operation
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+        delete:
+          implementation: cloudify-mano-plugin.mano_plugin.tasks.delete_ns_instance
+          inputs:
+            client_config:
+              default: { get_property: [ SELF, client_config ] }
+

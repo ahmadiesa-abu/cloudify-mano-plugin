@@ -1,0 +1,171 @@
+tosca_definitions_version: cloudify_dsl_1_4
+
+
+imports:
+  - https://cloudify.co/spec/cloudify/6.4.0/types.yaml
+  - plugin:cloudify-utilities-plugin
+  - plugin:cloudify-mano-plugin
+
+
+inputs:
+
+  username:
+    type: string
+    default: { get_secret: etsi_username }
+
+  password:
+    type: string
+    default: { get_secret: etsi_password }
+
+  endpoint_url:
+    type: string
+    default: ''
+
+  tags:
+    type: string
+    default: {"tags": "vnf"}
+
+dsl_definitions:
+  client_config: &client_config
+    username: { get_input: username }
+    password: { get_input: password }
+    endpoint_url: { get_input: endpoint_url }
+
+node_templates:
+
+  udr:
+    type: cloudify.mano.etsi.sol.VFNPackage
+    properties:
+      client_config: *client_config
+      file: "udr-1.0.0.zip"
+
+  upf:
+    type: cloudify.mano.etsi.sol.VFNPackage
+    properties:
+      client_config: *client_config
+      file: "upf-1.0.0.zip"
+
+  nrf:
+    type: cloudify.mano.etsi.sol.VFNPackage
+    properties:
+      client_config: *client_config
+      file: "nrf-1.0.0.zip"
+
+  pcf:
+    type: cloudify.mano.etsi.sol.VFNPackage
+    properties:
+      client_config: *client_config
+      file: "pcf-1.0.0.zip"
+
+  ausf:
+    type: cloudify.mano.etsi.sol.VFNPackage
+    properties:
+      client_config: *client_config
+      file: "ausf-1.0.0.zip"
+
+  nssf:
+    type: cloudify.mano.etsi.sol.VFNPackage
+    properties:
+      client_config: *client_config
+      file: "nssf-1.0.0.zip"
+
+  udm:
+    type: cloudify.mano.etsi.sol.VFNPackage
+    properties:
+      client_config: *client_config
+      file: "udm-1.0.0.zip"
+
+  smf:
+    type: cloudify.mano.etsi.sol.VFNPackage
+    properties:
+      client_config: *client_config
+      file: "smf-1.0.0.zip"
+
+  amf:
+    type: cloudify.mano.etsi.sol.VFNPackage
+    properties:
+      client_config: *client_config
+      file: "amf-1.0.0.zip"
+
+  webui:
+    type: cloudify.mano.etsi.sol.VFNPackage
+    properties:
+      client_config: *client_config
+      file: "webui-1.0.0.zip"
+
+  nsd_node:
+    type: cloudify.mano.etsi.sol.NSDPackage
+    properties:
+      client_config: *client_config
+      file: "core-1.0.0.zip"
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: amf
+      - type: cloudify.relationships.depends_on
+        target: ausf
+      - type: cloudify.relationships.depends_on
+        target: nrf
+      - type: cloudify.relationships.depends_on
+        target: nssf
+      - type: cloudify.relationships.depends_on
+        target: pcf
+      - type: cloudify.relationships.depends_on
+        target: smf
+      - type: cloudify.relationships.depends_on
+        target: udm
+      - type: cloudify.relationships.depends_on
+        target: udr
+      - type: cloudify.relationships.depends_on
+        target: upf
+      - type: cloudify.relationships.depends_on
+        target: webui
+
+  ns_instance_node:
+    type: cloudify.mano.etsi.sol.NSInstance
+    properties:
+      client_config: *client_config
+      nsName: ""
+      nsdId: { get_attribute: [ nsd_node, nsd_id ] }
+      nsDescription: ""
+      additionalParamsForNs: {}
+    relationships:
+      - type: cloudify.relationships.depends_on
+        target: nsd_node
+
+outputs:
+  amf_id:
+    value: { get_attribute: [ amf, function_package_id ] }
+
+  ausf_id:
+    value: { get_attribute: [ ausf, function_package_id ] }
+
+  nrf_id:
+    value: { get_attribute: [ nrf, function_package_id ] }
+
+  nssf_id:
+    value: { get_attribute: [ nssf, function_package_id ] }
+
+  pcf_id:
+    value: { get_attribute: [ pcf, function_package_id ] }
+
+  smf_id:
+    value: { get_attribute: [ smf, function_package_id ] }
+
+  udm_id:
+    value: { get_attribute: [ udm, function_package_id ] }
+
+  udr_id:
+    value: { get_attribute: [ udr, function_package_id ] }
+
+  upf_id:
+    value: { get_attribute: [ upf, function_package_id ] }
+
+  webui_id:
+    value: { get_attribute: [ webui, function_package_id ] }
+
+  nsd_node_id:
+    value: { get_attribute: [ nsd_node, id ] }
+
+  ns_instance_node_id:
+    value: { get_attribute: [ ns_instance_node, ns_instance_id ] }
+
